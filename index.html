@@ -46,7 +46,7 @@
 
 <script>
 let users = {
-  "admin": "admin1342"  // Exemple d'utilisateur admin
+  "admin": "admin123"  // Exemple d'utilisateur admin
 };
 let currentUser = null;
 
@@ -62,46 +62,18 @@ function login() {
   }
 }
 
-// Données exemple des composants électroniques
-const chips = [
-  { nom: "NE555", type: "Timer", broches: 8, tension: "5V", puissance: "0.3W", ampérage: "10mA", fréquence: "1Hz", modèle: "NE555", description: "Timer utilisé pour temporisations, PWM.", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/NE555.jpg/200px-NE555.jpg", usage: "Temporisation" },
-  { nom: "ATmega328", type: "Microcontrôleur", broches: 28, tension: "5V", puissance: "15mW", ampérage: "5mA", fréquence: "16MHz", modèle: "ATmega328", description: "Microcontrôleur Arduino", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/ATmega328.jpg/220px-ATmega328.jpg", usage: "Arduino" }
-];
-
 // Filtrer les composants selon la recherche
 function filterChips() {
   const text = document.getElementById("searchAll").value.toLowerCase();
-  const results = chips.filter(c =>
-    Object.values(c).some(v => v.toString().toLowerCase().includes(text))
-  );
-  displayResults(results);
-}
-
-// Affichage des résultats filtrés
-function displayResults(data) {
-  const container = document.getElementById("results");
-  container.innerHTML = "";
-  if (data.length === 0) {
-    container.innerHTML = "<p>Aucun résultat.</p>";
+  if (!text) {
+    alert("Veuillez entrer un terme de recherche.");
     return;
   }
-  data.forEach(c => {
-    container.innerHTML += `
-      <div class="chip-card">
-        <img src="${c.image}" class="chip-img" alt="${c.nom}">
-        <h3>${c.nom} (${c.type})</h3>
-        <p><strong>Broches:</strong> ${c.broches} | <strong>Tension:</strong> ${c.tension}</p>
-        <p><strong>Puissance:</strong> ${c.puissance} | <strong>Ampérage:</strong> ${c.ampérage}</p>
-        <p><strong>Fréquence:</strong> ${c.fréquence} | <strong>Modèle:</strong> ${c.modèle}</p>
-        <p><strong>Description:</strong> ${c.description}</p>
-        <p><strong>Usage:</strong> ${c.usage}</p>
-        <button onclick="askChatGPT('${c.nom}')">Demander à ChatGPT</button>
-      </div>`;
-  });
+  askChatGPT(text);
 }
 
 // Fonction pour interroger ChatGPT via l'API OpenAI
-async function askChatGPT(question) {
+async function askChatGPT(query) {
   const apiKey = document.getElementById("apiKey").value;
   if (!apiKey) {
     alert("Veuillez entrer votre clé API OpenAI !");
@@ -117,25 +89,37 @@ async function askChatGPT(question) {
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: "Donne-moi des infos sur " + question }]
+        messages: [
+          {
+            role: "user", 
+            content: `Donne-moi des informations sur le composant électronique suivant : ${query}`
+          }
+        ]
       })
     });
-
-    if (!response.ok) {
-      throw new Error("Erreur lors de la récupération de la réponse de l'API");
-    }
 
     const data = await response.json();
 
     if (data.choices && data.choices.length > 0) {
-      alert(data.choices[0].message.content);  // Afficher la réponse de ChatGPT
+      displayResults(data.choices[0].message.content);
     } else {
-      alert("Aucune réponse reçue de ChatGPT.");
+      displayResults("Aucune réponse reçue de ChatGPT.");
     }
   } catch (error) {
     console.error("Erreur dans la requête à l'API OpenAI :", error);
-    alert("Une erreur est survenue lors de l'appel à l'API OpenAI. Veuillez réessayer plus tard.");
+    displayResults("Une erreur est survenue lors de l'appel à l'API OpenAI. Veuillez réessayer plus tard.");
   }
+}
+
+// Affichage de la réponse générée par ChatGPT
+function displayResults(responseText) {
+  const container = document.getElementById("results");
+  container.innerHTML = `
+    <div class="chip-card">
+      <h3>Réponse de ChatGPT</h3>
+      <p>${responseText}</p>
+    </div>
+  `;
 }
 
 // Microphone vocal pour la recherche
@@ -154,17 +138,13 @@ function startVoiceSearch() {
 function exportPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  let y = 10;
-  chips.forEach(c => {
-    doc.text(`${c.nom} - ${c.type}`, 10, y);
-    y += 10;
-  });
+  doc.text("Liste des composants électroniques", 10, 10);
   doc.save("composants.pdf");
 }
 
 // Exporter en Excel
 function exportExcel() {
-  const ws = XLSX.utils.json_to_sheet(chips);
+  const ws = XLSX.utils.json_to_sheet([]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Composants");
   XLSX.writeFile(wb, "composants.xlsx");
